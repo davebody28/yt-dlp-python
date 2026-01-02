@@ -1,0 +1,5 @@
+bin/
+downloads/
+logs/
+archive.txt
+__pycache__/
