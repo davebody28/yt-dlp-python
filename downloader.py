@@ -335,6 +335,8 @@ class DownloaderGUI:
 
     def configure_theme(self):
         self.root.configure(bg="#1e1e1e")
+        preferred_font = ("Segoe UI", 10) if sys.platform.startswith("win") else ("Arial", 10)
+        self.root.option_add("*Font", preferred_font)
         style = ttk.Style()
         if "clam" in style.theme_names():
             style.theme_use("clam")
@@ -350,17 +352,30 @@ class DownloaderGUI:
         style.configure("Treeview.Heading", background="#1e1e1e", foreground="#e0e0e0")
 
     def set_app_icon(self):
-        try:
-            if sys.platform.startswith("win"):
+        icon_loaded = False
+        if sys.platform.startswith("win"):
+            try:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".ico") as tmp:
                     tmp.write(base64.b64decode(ICO_BASE64))
                     self._icon_temp_path = tmp.name
                 self.root.iconbitmap(default=self._icon_temp_path)
+                icon_loaded = True
+            except Exception:
+                pass
+        try:
             icon_image = tk.PhotoImage(data=PNG_BASE64)
             self.root.iconphoto(True, icon_image)
             self._icon_image = icon_image
+            icon_loaded = True
         except Exception:
             pass
+        if not icon_loaded:
+            fallback_ico = Path("app.ico")
+            if fallback_ico.exists():
+                try:
+                    self.root.iconbitmap(default=str(fallback_ico))
+                except Exception:
+                    pass
 
     def build_ui(self):
         self.root.geometry("920x640")
