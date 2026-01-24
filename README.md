@@ -19,7 +19,7 @@ CLI mode (optional):
 Notes:
 - Binaries (yt-dlp.exe and ffmpeg.exe) will be downloaded to `bin/` automatically on first run.
 - yt-dlp self-updates on each run; ffmpeg is refreshed when a new release ZIP is detected.
-- App icon is embedded in `icon_data.py`. Generate `app.ico` locally for EXE builds if needed.
+- App icon is embedded in `icon_data.py` and the app will try to fetch the GitHub avatar at first run and cache it in `cache/` for the title bar.
 - If you see JS runtime warnings for YouTube, install Node.js (recommended).
 - Public hosting of this service is discouraged due to policy/abuse risk; run locally or in a secured private environment.
 
@@ -54,6 +54,7 @@ yt-dlp-python/
 ├── logs/
 │   ├── yt-dlp.log
 │   └── yt-dlp-errors.log
+├── cache/               # cache na ikony (pobierane z URL)
 ├── tools/
 │   └── write_icon.py     # generuje app.ico lokalnie do builda EXE
 └── bin/

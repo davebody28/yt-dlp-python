@@ -12,6 +12,7 @@ import base64
 import os
 import sys
 import shutil
+import struct
 import subprocess
 import tempfile
 import threading
@@ -31,6 +32,7 @@ from icon_data import ICO_BASE64, PNG_BASE64
 # ---------------- CONFIG ----------------
 BASE = Path(__file__).resolve().parent
 BIN = BASE / "bin"
+ICON_CACHE_DIR = BASE / "cache"
 DEFAULT_DOWNLOADS_DIR = None
 if sys.platform.startswith("win"):
     DEFAULT_DOWNLOADS_DIR = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Downloads"
@@ -58,6 +60,7 @@ AUDIO_QUALITY = "0"  # best VBR
 YTDLP_RELEASE_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
 FFMPEG_ZIP_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 FFMPEG_VERSION_FILE = BIN / "ffmpeg.version"
+ICON_URL = "https://avatars.githubusercontent.com/u/79589310?v=4"
 
 AUDIO_FORMATS = ["mp3", "aac", "flac", "webm", "mp4"]
 PLAYLIST_MODES = {"single": "Single video only", "playlist": "Playlist (all items)"}
@@ -65,7 +68,7 @@ LOG_LOCK = threading.Lock()
 # ----------------------------------------
 
 def ensure_dirs():
-    for d in (BIN, OUT, LOGS):
+    for d in (BIN, OUT, LOGS, ICON_CACHE_DIR):
         d.mkdir(parents=True, exist_ok=True)
     # ensure logs exist
     LOG_FILE.touch(exist_ok=True)
@@ -74,10 +77,35 @@ def ensure_dirs():
 def download_file(url: str, dest: Path):
     print(f"Downloading {url} -> {dest.name} ...")
     try:
-        urllib.request.urlretrieve(url, str(dest))
+        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(request) as response, dest.open("wb") as handle:
+            handle.write(response.read())
     except Exception as e:
         print(f"ERROR downloading {url}: {e}")
         raise
+
+def png_to_ico(png_data: bytes) -> bytes:
+    if not png_data.startswith(b"\x89PNG"):
+        raise ValueError("Icon data is not a PNG")
+    width = int.from_bytes(png_data[16:20], "big")
+    height = int.from_bytes(png_data[20:24], "big")
+    w = width if width < 256 else 0
+    h = height if height < 256 else 0
+    header = struct.pack("<HHH", 0, 1, 1)
+    entry = struct.pack("<BBBBHHII", w, h, 0, 0, 1, 32, len(png_data), 22)
+    return header + entry + png_data
+
+def ensure_icon_files():
+    png_path = ICON_CACHE_DIR / "app.png"
+    ico_path = ICON_CACHE_DIR / "app.ico"
+    if png_path.exists() and ico_path.exists():
+        return png_path, ico_path
+    try:
+        download_file(ICON_URL, png_path)
+        ico_path.write_bytes(png_to_ico(png_path.read_bytes()))
+    except Exception:
+        return None, None
+    return png_path, ico_path
 
 def get_remote_last_modified(url: str):
     try:
@@ -337,6 +365,7 @@ class DownloaderGUI:
         self.root.configure(bg="#1e1e1e")
         preferred_font = ("Segoe UI", 10) if sys.platform.startswith("win") else ("Arial", 10)
         self.root.option_add("*Font", preferred_font)
+        self.download_font = (preferred_font[0], 12, "bold")
         style = ttk.Style()
         if "clam" in style.theme_names():
             style.theme_use("clam")
@@ -353,17 +382,25 @@ class DownloaderGUI:
 
     def set_app_icon(self):
         icon_loaded = False
+        png_path, ico_path = ensure_icon_files()
         if sys.platform.startswith("win"):
             try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".ico") as tmp:
-                    tmp.write(base64.b64decode(ICO_BASE64))
-                    self._icon_temp_path = tmp.name
-                self.root.iconbitmap(default=self._icon_temp_path)
-                icon_loaded = True
+                if ico_path and ico_path.exists():
+                    self.root.iconbitmap(default=str(ico_path))
+                    icon_loaded = True
+                else:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".ico") as tmp:
+                        tmp.write(base64.b64decode(ICO_BASE64))
+                        self._icon_temp_path = tmp.name
+                    self.root.iconbitmap(default=self._icon_temp_path)
+                    icon_loaded = True
             except Exception:
                 pass
         try:
-            icon_image = tk.PhotoImage(data=PNG_BASE64)
+            if png_path and png_path.exists():
+                icon_image = tk.PhotoImage(file=str(png_path))
+            else:
+                icon_image = tk.PhotoImage(data=PNG_BASE64)
             self.root.iconphoto(True, icon_image)
             self._icon_image = icon_image
             icon_loaded = True
@@ -434,7 +471,20 @@ class DownloaderGUI:
         )
         playlist_all.grid(row=1, column=2, sticky="w", pady=(8, 0))
 
-        self.start_button = ttk.Button(options_frame, text="Download", command=self.start_downloads)
+        self.start_button = tk.Button(
+            options_frame,
+            text="Download",
+            command=self.start_downloads,
+            background="#1db954",
+            foreground="#ffffff",
+            activebackground="#1ed760",
+            activeforeground="#ffffff",
+            font=self.download_font,
+            padx=14,
+            pady=6,
+            borderwidth=0,
+            highlightthickness=0,
+        )
         self.start_button.grid(row=1, column=4, pady=(8, 0), sticky="e")
 
         options_frame.columnconfigure(3, weight=1)

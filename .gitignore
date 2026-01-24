@@ -3,3 +3,4 @@ downloads/
 logs/
 __pycache__/
 app.ico
+cache/
