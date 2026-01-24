@@ -400,30 +400,27 @@ class DownloaderGUI:
         browse_button = ttk.Button(options_frame, text="Browse", command=self.choose_output_dir)
         browse_button.grid(row=0, column=4, sticky="w")
 
-        self.start_button = ttk.Button(options_frame, text="Download", command=self.start_downloads)
-        self.start_button.grid(row=1, column=4, pady=(8, 0), sticky="e")
-
-        playlist_frame = ttk.Frame(self.root)
-        playlist_frame.pack(fill="x", padx=16, pady=(6, 0))
-
-        playlist_label = ttk.Label(playlist_frame, text="Playlist mode:")
-        playlist_label.pack(side="left")
+        playlist_label = ttk.Label(options_frame, text="Playlist mode:")
+        playlist_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
 
         playlist_single = ttk.Radiobutton(
-            playlist_frame,
+            options_frame,
             text=PLAYLIST_MODES["single"],
             variable=self.playlist_var,
             value="single",
         )
-        playlist_single.pack(side="left", padx=(8, 12))
+        playlist_single.grid(row=1, column=1, sticky="w", pady=(8, 0))
 
         playlist_all = ttk.Radiobutton(
-            playlist_frame,
+            options_frame,
             text=PLAYLIST_MODES["playlist"],
             variable=self.playlist_var,
             value="playlist",
         )
-        playlist_all.pack(side="left")
+        playlist_all.grid(row=1, column=2, sticky="w", pady=(8, 0))
+
+        self.start_button = ttk.Button(options_frame, text="Download", command=self.start_downloads)
+        self.start_button.grid(row=1, column=4, pady=(8, 0), sticky="e")
 
         options_frame.columnconfigure(3, weight=1)
 
