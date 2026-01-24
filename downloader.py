@@ -348,6 +348,8 @@ class DownloaderGUI:
 
         self.urls_text = None
         self.log_text = None
+        self.log_window = None
+        self.log_buffer = []
         self.status_tree = None
 
         self.output_dir_var = tk.StringVar(value=str(OUT))
@@ -415,7 +417,7 @@ class DownloaderGUI:
                     pass
 
     def build_ui(self):
-        self.root.geometry("920x640")
+        self.root.geometry("860x640")
         self.root.minsize(820, 560)
 
         header = ttk.Label(self.root, text="YouTube Audio Downloader", font=("Segoe UI", 14, "bold"))
@@ -457,10 +459,10 @@ class DownloaderGUI:
         playlist_all.grid(row=0, column=2, sticky="w")
 
         format_label = ttk.Label(options_frame, text="Output format:")
-        format_label.grid(row=0, column=3, sticky="w", padx=(16, 0))
+        format_label.grid(row=0, column=3, sticky="w", padx=(12, 0))
 
-        format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=12)
-        format_menu.grid(row=0, column=4, padx=(8, 0), sticky="w")
+        format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=10)
+        format_menu.grid(row=0, column=4, padx=(6, 0), sticky="w")
 
         output_label = ttk.Label(options_frame, text="Output directory:")
         output_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
@@ -494,29 +496,23 @@ class DownloaderGUI:
         spacer = ttk.Frame(self.root)
         spacer.pack(fill="x", padx=16, pady=(10, 6))
 
-        status_label = ttk.Label(self.root, text="Current downloads:")
-        status_label.pack(anchor="w", padx=16, pady=(8, 2))
+        status_header = ttk.Frame(self.root)
+        status_header.pack(fill="x", padx=16, pady=(8, 2))
 
-        self.status_tree = ttk.Treeview(self.root, columns=("status", "url"), show="headings", height=6)
+        status_label = ttk.Label(status_header, text="Current downloads:")
+        status_label.pack(side="left")
+
+        logs_button = ttk.Button(status_header, text="Show logs", command=self.open_logs_window)
+        logs_button.pack(side="right")
+
+        self.status_tree = ttk.Treeview(self.root, columns=("status", "url"), show="headings", height=8)
         self.status_tree.heading("status", text="Status")
         self.status_tree.heading("url", text="URL")
         self.status_tree.column("status", width=120, anchor="w")
         self.status_tree.column("url", width=640, anchor="w")
         self.status_tree.pack(fill="both", padx=16, pady=(0, 10), expand=True)
 
-        log_label = ttk.Label(self.root, text="Logs:")
-        log_label.pack(anchor="w", padx=16)
-
-        self.log_text = ScrolledText(
-            self.root,
-            height=8,
-            wrap=tk.WORD,
-            state=tk.DISABLED,
-            background="#2b2b2b",
-            foreground="#e0e0e0",
-            insertbackground="#e0e0e0",
-        )
-        self.log_text.pack(fill="both", padx=16, pady=(4, 12), expand=True)
+        self.log_text = None
 
     def choose_output_dir(self):
         path = filedialog.askdirectory(initialdir=self.output_dir_var.get() or str(OUT))
@@ -526,6 +522,42 @@ class DownloaderGUI:
     def set_controls_state(self, enabled: bool):
         state = tk.NORMAL if enabled else tk.DISABLED
         self.start_button.configure(state=state)
+
+    def open_logs_window(self):
+        if self.log_window and tk.Toplevel.winfo_exists(self.log_window):
+            self.log_window.lift()
+            return
+        self.log_window = tk.Toplevel(self.root)
+        self.log_window.title("Download logs")
+        self.log_window.geometry("820x480")
+        self.log_window.configure(bg="#1e1e1e")
+        if getattr(self, "_icon_image", None) is not None:
+            try:
+                self.log_window.iconphoto(True, self._icon_image)
+            except Exception:
+                pass
+        if getattr(self, "_icon_temp_path", None):
+            try:
+                self.log_window.iconbitmap(default=self._icon_temp_path)
+            except Exception:
+                pass
+
+        log_text = ScrolledText(
+            self.log_window,
+            height=10,
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+            background="#2b2b2b",
+            foreground="#e0e0e0",
+            insertbackground="#e0e0e0",
+        )
+        log_text.pack(fill="both", padx=12, pady=12, expand=True)
+        self.log_text = log_text
+        self.log_text.configure(state=tk.NORMAL)
+        for line in self.log_buffer:
+            self.log_text.insert(tk.END, line + "\n")
+        self.log_text.see(tk.END)
+        self.log_text.configure(state=tk.DISABLED)
 
     def start_downloads(self):
         urls = read_urls_from_text(self.urls_text.get("1.0", tk.END))
@@ -601,6 +633,9 @@ class DownloaderGUI:
         queue_event(self.event_queue, {"type": "done"})
 
     def append_log(self, text: str):
+        self.log_buffer.append(text)
+        if not self.log_text:
+            return
         self.log_text.configure(state=tk.NORMAL)
         self.log_text.insert(tk.END, text + "\n")
         self.log_text.see(tk.END)

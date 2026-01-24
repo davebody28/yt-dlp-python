@@ -7,7 +7,7 @@ How to run (Windows):
 2. Paste URLs (one per line) into the app.
 3. Pick output format (mp3/aac/flac/webm/mp4) and output directory.
 4. Choose playlist mode: single video only or full playlist.
-5. Click **Download** and watch the status/logs.
+5. Click **Download** and watch the status; logs are available via the **Show logs** button.
 6. Files appear in the selected output directory (default: your Windows Downloads folder).
 
 CLI mode (optional):
