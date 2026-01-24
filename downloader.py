@@ -63,7 +63,7 @@ FFMPEG_VERSION_FILE = BIN / "ffmpeg.version"
 ICON_URL = "https://avatars.githubusercontent.com/u/79589310?v=4"
 
 AUDIO_FORMATS = ["mp3", "aac", "flac", "webm", "mp4"]
-PLAYLIST_MODES = {"single": "Single video only", "playlist": "Playlist (all items)"}
+PLAYLIST_MODES = {"single": "Single file", "playlist": "Playlist (all items)"}
 LOG_LOCK = threading.Lock()
 # ----------------------------------------
 
@@ -352,7 +352,7 @@ class DownloaderGUI:
 
         self.output_dir_var = tk.StringVar(value=str(OUT))
         self.format_var = tk.StringVar(value=DEFAULT_AUDIO_FORMAT)
-        self.playlist_var = tk.StringVar(value="playlist")
+        self.playlist_var = tk.StringVar(value="single")
 
         self.start_button = None
 
@@ -437,23 +437,8 @@ class DownloaderGUI:
         options_frame = ttk.Frame(self.root)
         options_frame.pack(fill="x", padx=16)
 
-        format_label = ttk.Label(options_frame, text="Output format:")
-        format_label.grid(row=0, column=0, sticky="w")
-
-        format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=12)
-        format_menu.grid(row=0, column=1, padx=(8, 24), sticky="w")
-
-        output_label = ttk.Label(options_frame, text="Output directory:")
-        output_label.grid(row=0, column=2, sticky="w")
-
-        output_entry = ttk.Entry(options_frame, textvariable=self.output_dir_var, width=50)
-        output_entry.grid(row=0, column=3, padx=(8, 8), sticky="w")
-
-        browse_button = ttk.Button(options_frame, text="Browse", command=self.choose_output_dir)
-        browse_button.grid(row=0, column=4, sticky="w")
-
         playlist_label = ttk.Label(options_frame, text="Playlist mode:")
-        playlist_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        playlist_label.grid(row=0, column=0, sticky="w")
 
         playlist_single = ttk.Radiobutton(
             options_frame,
@@ -461,7 +446,7 @@ class DownloaderGUI:
             variable=self.playlist_var,
             value="single",
         )
-        playlist_single.grid(row=1, column=1, sticky="w", pady=(8, 0))
+        playlist_single.grid(row=0, column=1, sticky="w")
 
         playlist_all = ttk.Radiobutton(
             options_frame,
@@ -469,7 +454,22 @@ class DownloaderGUI:
             variable=self.playlist_var,
             value="playlist",
         )
-        playlist_all.grid(row=1, column=2, sticky="w", pady=(8, 0))
+        playlist_all.grid(row=0, column=2, sticky="w")
+
+        format_label = ttk.Label(options_frame, text="Output format:")
+        format_label.grid(row=0, column=3, sticky="w", padx=(16, 0))
+
+        format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=12)
+        format_menu.grid(row=0, column=4, padx=(8, 0), sticky="w")
+
+        output_label = ttk.Label(options_frame, text="Output directory:")
+        output_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+        output_entry = ttk.Entry(options_frame, textvariable=self.output_dir_var, width=50)
+        output_entry.grid(row=1, column=1, columnspan=3, padx=(8, 8), pady=(8, 0), sticky="ew")
+
+        browse_button = ttk.Button(options_frame, text="Browse", command=self.choose_output_dir)
+        browse_button.grid(row=1, column=4, pady=(8, 0), sticky="w")
 
         self.start_button = tk.Button(
             options_frame,
@@ -481,12 +481,14 @@ class DownloaderGUI:
             activeforeground="#ffffff",
             font=self.download_font,
             padx=14,
-            pady=6,
+            pady=8,
             borderwidth=0,
             highlightthickness=0,
         )
-        self.start_button.grid(row=1, column=4, pady=(8, 0), sticky="e")
+        self.start_button.grid(row=2, column=0, columnspan=5, pady=(12, 0), sticky="ew")
 
+        options_frame.columnconfigure(1, weight=0)
+        options_frame.columnconfigure(2, weight=0)
         options_frame.columnconfigure(3, weight=1)
 
         spacer = ttk.Frame(self.root)
