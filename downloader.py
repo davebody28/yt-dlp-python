@@ -417,8 +417,8 @@ class DownloaderGUI:
                     pass
 
     def build_ui(self):
-        self.root.geometry("860x640")
-        self.root.minsize(820, 560)
+        self.root.geometry("820x640")
+        self.root.minsize(780, 560)
 
         header = ttk.Label(self.root, text="YouTube Audio Downloader", font=("Segoe UI", 14, "bold"))
         header.pack(anchor="w", padx=16, pady=(12, 4))
@@ -459,7 +459,7 @@ class DownloaderGUI:
         playlist_all.grid(row=0, column=2, sticky="w")
 
         format_label = ttk.Label(options_frame, text="Output format:")
-        format_label.grid(row=0, column=3, sticky="w", padx=(12, 0))
+        format_label.grid(row=0, column=3, sticky="w", padx=(8, 0))
 
         format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=10)
         format_menu.grid(row=0, column=4, padx=(6, 0), sticky="w")
@@ -471,7 +471,7 @@ class DownloaderGUI:
         output_entry.grid(row=1, column=1, columnspan=3, padx=(8, 8), pady=(8, 0), sticky="ew")
 
         browse_button = ttk.Button(options_frame, text="Browse", command=self.choose_output_dir)
-        browse_button.grid(row=1, column=4, pady=(8, 0), sticky="w")
+        browse_button.grid(row=1, column=4, pady=(8, 0), sticky="ew")
 
         self.start_button = tk.Button(
             options_frame,
@@ -489,9 +489,8 @@ class DownloaderGUI:
         )
         self.start_button.grid(row=2, column=0, columnspan=5, pady=(12, 0), sticky="ew")
 
-        options_frame.columnconfigure(1, weight=0)
-        options_frame.columnconfigure(2, weight=0)
-        options_frame.columnconfigure(3, weight=1)
+        for col in range(5):
+            options_frame.columnconfigure(col, weight=1, uniform="options")
 
         spacer = ttk.Frame(self.root)
         spacer.pack(fill="x", padx=16, pady=(10, 6))
