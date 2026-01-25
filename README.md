@@ -6,15 +6,15 @@ How to run (Windows):
    `python downloader.py`
 2. Paste URLs (one per line) into the app.
 3. Pick output format (mp3/aac/flac/webm/mp4) and output directory.
-4. Choose playlist mode: single video only or full playlist.
+4. Choose playlist mode: single file or full playlist.
 5. Click **Download** and watch the status; logs are available via the **Show logs** button.
-6. Files appear in the selected output directory (default: your Windows Downloads folder).
+6. Files appear in the selected output directory (default: `Downloads/YYYY-MM-DD`).
 
 CLI mode (optional):
 1. Put your URLs (one per line) into `urls.txt`
 2. Run `python downloader.py --cli` (optional: `--single` or `--playlist`)
 3. Watch console output (progress). Logs are written to `logs/yt-dlp.log` and `logs/yt-dlp-errors.log`
-4. Files appear in the default output directory (Downloads on Windows, `downloads/` elsewhere)
+4. Files appear in the default output directory (Downloads or `downloads/` with a `YYYY-MM-DD` subfolder)
 
 Notes:
 - Binaries (yt-dlp.exe and ffmpeg.exe) will be downloaded to `bin/` automatically on first run.
@@ -50,7 +50,7 @@ yt-dlp-python/
 ├── README.md
 ├── .gitignore
 │
-├── downloads/           # miejsce docelowe - tu trafią pliki (poza Windows)
+├── downloads/           # miejsce docelowe - tu trafią pliki (poza Windows, w podfolderach YYYY-MM-DD)
 ├── logs/
 │   ├── yt-dlp.log
 │   └── yt-dlp-errors.log

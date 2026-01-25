@@ -9,6 +9,7 @@ yt-dlp Python launcher
 """
 
 import base64
+import datetime as dt
 import os
 import sys
 import shutil
@@ -33,10 +34,16 @@ from icon_data import ICO_BASE64, PNG_BASE64
 BASE = Path(__file__).resolve().parent
 BIN = BASE / "bin"
 ICON_CACHE_DIR = BASE / "cache"
-DEFAULT_DOWNLOADS_DIR = None
-if sys.platform.startswith("win"):
-    DEFAULT_DOWNLOADS_DIR = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Downloads"
-OUT = DEFAULT_DOWNLOADS_DIR if DEFAULT_DOWNLOADS_DIR else (BASE / "downloads")
+
+def default_output_dir():
+    date_folder = dt.date.today().isoformat()
+    if sys.platform.startswith("win"):
+        base_dir = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Downloads"
+    else:
+        base_dir = BASE / "downloads"
+    return base_dir / date_folder
+
+OUT = default_output_dir()
 LOGS = BASE / "logs"
 YT_DLP_EXE = BIN / "yt-dlp.exe"
 FFMPEG_EXE = BIN / "ffmpeg.exe"
@@ -440,32 +447,52 @@ class DownloaderGUI:
         options_frame.pack(fill="x", padx=16)
 
         playlist_label = ttk.Label(options_frame, text="Playlist mode:")
-        playlist_label.grid(row=0, column=0, sticky="w")
+        playlist_label.grid(row=0, column=0, sticky="ew")
 
-        playlist_single = ttk.Radiobutton(
+        playlist_single = tk.Radiobutton(
             options_frame,
             text=PLAYLIST_MODES["single"],
             variable=self.playlist_var,
             value="single",
+            indicatoron=0,
+            background="#2b2b2b",
+            foreground="#ffffff",
+            activebackground="#1db954",
+            activeforeground="#ffffff",
+            selectcolor="#1db954",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=10,
+            pady=4,
         )
-        playlist_single.grid(row=0, column=1, sticky="w")
+        playlist_single.grid(row=0, column=1, sticky="ew")
 
-        playlist_all = ttk.Radiobutton(
+        playlist_all = tk.Radiobutton(
             options_frame,
             text=PLAYLIST_MODES["playlist"],
             variable=self.playlist_var,
             value="playlist",
+            indicatoron=0,
+            background="#2b2b2b",
+            foreground="#ffffff",
+            activebackground="#1db954",
+            activeforeground="#ffffff",
+            selectcolor="#1db954",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=10,
+            pady=4,
         )
-        playlist_all.grid(row=0, column=2, sticky="w")
+        playlist_all.grid(row=0, column=2, sticky="ew")
 
         format_label = ttk.Label(options_frame, text="Output format:")
-        format_label.grid(row=0, column=3, sticky="w", padx=(8, 0))
+        format_label.grid(row=0, column=3, sticky="ew", padx=(8, 0))
 
         format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=10)
-        format_menu.grid(row=0, column=4, padx=(6, 0), sticky="w")
+        format_menu.grid(row=0, column=4, padx=(6, 0), sticky="ew")
 
         output_label = ttk.Label(options_frame, text="Output directory:")
-        output_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        output_label.grid(row=1, column=0, sticky="ew", pady=(8, 0))
 
         output_entry = ttk.Entry(options_frame, textvariable=self.output_dir_var, width=50)
         output_entry.grid(row=1, column=1, columnspan=3, padx=(8, 8), pady=(8, 0), sticky="ew")
