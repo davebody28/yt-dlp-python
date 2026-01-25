@@ -11,6 +11,6 @@ python "%~dp0downloader.py"
 
 echo.
 echo ===============================
-echo   ZAKOŃCZONE
+echo   DONE
 echo ===============================
 pause
