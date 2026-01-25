@@ -36,7 +36,7 @@ Use PyInstaller to create a single executable. The EXE will still download yt-dl
 ```bash
 pip install pyinstaller
 python tools/write_icon.py
-pyinstaller --onefile --windowed --icon app.ico --name yt-dlp-downloader downloader.py
+python -m PyInstaller --onefile --windowed --icon app.ico --name yt-dlp-downloader downloader.py
 ```
 
 ## Directory structure
