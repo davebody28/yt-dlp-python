@@ -5,7 +5,7 @@ How to run (Windows):
 1. Run `run.bat` (double-click) or in terminal:
    `python downloader.py`
 2. Paste URLs (one per line) into the app.
-3. Pick output format (mp3/aac/flac/webm/mp4) and output directory.
+3. Pick output format (MP3 320k, M4A 256k, AAC 256k, FLAC, WEBM Video) and output directory.
 4. Choose playlist mode: single file or full playlist.
 5. Click **Download** and watch the status; logs are available via the **Show logs** button.
 6. Files appear in the selected output directory (default: `Downloads/YYYY-MM-DD`).
@@ -20,6 +20,7 @@ Notes:
 - Binaries (yt-dlp.exe and ffmpeg.exe) will be downloaded to `bin/` automatically on first run.
 - yt-dlp self-updates on each run; ffmpeg is refreshed when a new release ZIP is detected.
 - App icon is embedded in `icon_data.py` and the app will try to fetch the GitHub avatar at first run and cache it in `cache/` for the title bar.
+- Output formats include MP3 320k, M4A 256k, AAC 256k, FLAC, and WEBM Video.
 - If you see JS runtime warnings for YouTube, install Node.js (recommended).
 - Public hosting of this service is discouraged due to policy/abuse risk; run locally or in a secured private environment.
 

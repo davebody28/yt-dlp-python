@@ -60,7 +60,6 @@ PARALLEL_FRAGMENTS = "16"
 CONCURRENT_FRAGMENTS = "16"
 
 # audio options
-DEFAULT_AUDIO_FORMAT = "mp3"
 AUDIO_QUALITY = "0"  # best VBR
 
 # download sources
@@ -69,7 +68,13 @@ FFMPEG_ZIP_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.z
 FFMPEG_VERSION_FILE = BIN / "ffmpeg.version"
 ICON_URL = "https://avatars.githubusercontent.com/u/79589310?v=4"
 
-AUDIO_FORMATS = ["mp3", "aac", "flac", "webm", "mp4"]
+OUTPUT_FORMATS = [
+    {"name": "MP3 320k", "format": "mp3", "bitrate": "320K", "video_only": False},
+    {"name": "M4A 256k", "format": "m4a", "bitrate": "256K", "video_only": False},
+    {"name": "AAC 256k", "format": "aac", "bitrate": "256K", "video_only": False},
+    {"name": "FLAC", "format": "flac", "bitrate": None, "video_only": False},
+    {"name": "WEBM Video", "format": "webm", "bitrate": None, "video_only": True},
+]
 PLAYLIST_MODES = {"single": "Single file", "playlist": "Playlist (all items)"}
 LOG_LOCK = threading.Lock()
 # ----------------------------------------
@@ -140,7 +145,13 @@ def ensure_yt_dlp():
     else:
         # try to self-update via downloaded binary; ignore errors
         try:
-            subprocess.run([str(YT_DLP_EXE), "-U"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                [str(YT_DLP_EXE), "-U"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0,
+            )
         except Exception:
             pass
 
@@ -198,19 +209,12 @@ def read_urls_from_text(text: str):
         lines.append(l)
     return lines
 
-def build_command(url: str, output_dir: Path, audio_format: str, playlist_mode: str):
+def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode: str):
     outtmpl = f"{output_dir / '%(title)s.%(ext)s'}"
     cmd = [
         str(YT_DLP_EXE),
-        "-f",
-        "bestaudio/best",
         "--js-runtimes",
         "node",
-        "--extract-audio",
-        "--audio-format",
-        audio_format,
-        "--audio-quality",
-        AUDIO_QUALITY,
         "-o",
         outtmpl,
         "-N",
@@ -227,8 +231,22 @@ def build_command(url: str, output_dir: Path, audio_format: str, playlist_mode: 
         "--ignore-errors",
         "--no-mtime",
         "--restrict-filenames",
-        url,
     ]
+    if output_format["video_only"]:
+        cmd += ["-f", "bestvideo[ext=webm]+bestaudio[ext=webm]/best[ext=webm]"]
+    else:
+        cmd += [
+            "-f",
+            "bestaudio/best",
+            "--extract-audio",
+            "--audio-format",
+            output_format["format"],
+        ]
+        if output_format.get("bitrate"):
+            cmd += ["--audio-quality", output_format["bitrate"]]
+        else:
+            cmd += ["--audio-quality", AUDIO_QUALITY]
+    cmd.append(url)
     if playlist_mode == "single":
         cmd.insert(-1, "--no-playlist")
     return cmd
@@ -262,7 +280,7 @@ def run_yt_dlp_for_url(
     url: str,
     index: int,
     output_dir: Path,
-    audio_format: str,
+    output_format: dict,
     playlist_mode: str,
     event_queue: Queue | None = None,
 ):
@@ -271,10 +289,18 @@ def run_yt_dlp_for_url(
     Streams stdout/stderr to console/GUI with prefix and appends to log files.
     Returns (url, returncode).
     """
-    cmd = build_command(url, output_dir, audio_format, playlist_mode)
+    cmd = build_command(url, output_dir, output_format, playlist_mode)
     prefix = f"[{index}] "
 
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True)
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform.startswith("win") else 0
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=1,
+        universal_newlines=True,
+        creationflags=creationflags,
+    )
     retcode = None
     try:
         with LOG_FILE.open("a", encoding="utf-8") as logf:
@@ -317,13 +343,14 @@ def cli_main():
 
     urls = read_urls_from_file()
     playlist_mode = "playlist" if "--playlist" in sys.argv else "single" if "--single" in sys.argv else "playlist"
+    output_format = OUTPUT_FORMATS[0]
     print(f"Loaded {len(urls)} URLs. Starting up to {MAX_WORKERS} parallel downloads.")
     start_time = time.time()
     results = []
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as exe:
         futures = {
-            exe.submit(run_yt_dlp_for_url, url, i + 1, OUT, DEFAULT_AUDIO_FORMAT, playlist_mode): url
+            exe.submit(run_yt_dlp_for_url, url, i + 1, OUT, output_format, playlist_mode): url
             for i, url in enumerate(urls)
         }
         for fut in as_completed(futures):
@@ -360,7 +387,7 @@ class DownloaderGUI:
         self.status_tree = None
 
         self.output_dir_var = tk.StringVar(value=str(OUT))
-        self.format_var = tk.StringVar(value=DEFAULT_AUDIO_FORMAT)
+        self.format_var = tk.StringVar(value=OUTPUT_FORMATS[0]["name"])
         self.playlist_var = tk.StringVar(value="single")
 
         self.start_button = None
@@ -442,6 +469,7 @@ class DownloaderGUI:
             insertbackground="#e0e0e0",
         )
         self.urls_text.pack(fill="x", padx=16, pady=(4, 12))
+        self.bind_text_context_menu()
 
         options_frame = ttk.Frame(self.root)
         options_frame.pack(fill="x", padx=16)
@@ -488,7 +516,13 @@ class DownloaderGUI:
         format_label = ttk.Label(options_frame, text="Output format:")
         format_label.grid(row=0, column=3, sticky="ew", padx=(8, 0))
 
-        format_menu = ttk.Combobox(options_frame, textvariable=self.format_var, values=AUDIO_FORMATS, state="readonly", width=10)
+        format_menu = ttk.Combobox(
+            options_frame,
+            textvariable=self.format_var,
+            values=[fmt["name"] for fmt in OUTPUT_FORMATS],
+            state="readonly",
+            width=14,
+        )
         format_menu.grid(row=0, column=4, padx=(6, 0), sticky="ew")
 
         output_label = ttk.Label(options_frame, text="Output directory:")
@@ -549,6 +583,18 @@ class DownloaderGUI:
         state = tk.NORMAL if enabled else tk.DISABLED
         self.start_button.configure(state=state)
 
+    def bind_text_context_menu(self):
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Cut", command=lambda: self.urls_text.event_generate("<<Cut>>"))
+        menu.add_command(label="Copy", command=lambda: self.urls_text.event_generate("<<Copy>>"))
+        menu.add_command(label="Paste", command=lambda: self.urls_text.event_generate("<<Paste>>"))
+
+        def show_menu(event):
+            menu.tk_popup(event.x_root, event.y_root)
+
+        self.urls_text.bind("<Button-3>", show_menu)
+        self.urls_text.bind("<Control-Button-1>", show_menu)
+
     def open_logs_window(self):
         if self.log_window and tk.Toplevel.winfo_exists(self.log_window):
             self.log_window.lift()
@@ -588,16 +634,17 @@ class DownloaderGUI:
     def start_downloads(self):
         urls = read_urls_from_text(self.urls_text.get("1.0", tk.END))
         if not urls:
-            messagebox.showwarning("Brak URL", "Wklej przynajmniej jeden adres URL.")
+            messagebox.showwarning("No URLs", "Please paste at least one URL.")
             return
         output_dir = Path(self.output_dir_var.get()).expanduser()
-        audio_format = self.format_var.get()
+        format_name = self.format_var.get()
         playlist_mode = self.playlist_var.get()
-        if audio_format not in AUDIO_FORMATS:
-            messagebox.showerror("Nieprawidłowy format", "Wybierz poprawny format audio.")
+        output_format = next((fmt for fmt in OUTPUT_FORMATS if fmt["name"] == format_name), None)
+        if output_format is None:
+            messagebox.showerror("Invalid format", "Select a valid output format.")
             return
         if playlist_mode not in PLAYLIST_MODES:
-            messagebox.showerror("Nieprawidłowy tryb", "Wybierz tryb playlisty lub pojedynczego utworu.")
+            messagebox.showerror("Invalid mode", "Select a playlist mode.")
             return
 
         self.status_tree.delete(*self.status_tree.get_children())
@@ -609,12 +656,12 @@ class DownloaderGUI:
 
         self.worker_thread = threading.Thread(
             target=self.run_downloads,
-            args=(urls, output_dir, audio_format, playlist_mode),
+            args=(urls, output_dir, output_format, playlist_mode),
             daemon=True,
         )
         self.worker_thread.start()
 
-    def run_downloads(self, urls, output_dir: Path, audio_format: str, playlist_mode: str):
+    def run_downloads(self, urls, output_dir: Path, output_format: dict, playlist_mode: str):
         ensure_dirs()
         try:
             ensure_yt_dlp()
@@ -638,7 +685,7 @@ class DownloaderGUI:
                     url,
                     i + 1,
                     output_dir,
-                    audio_format,
+                    output_format,
                     playlist_mode,
                     self.event_queue,
                 ): (url, i + 1)
