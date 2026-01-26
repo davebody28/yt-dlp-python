@@ -175,14 +175,20 @@ def ensure_ffmpeg():
         try:
             with zipfile.ZipFile(zpath, "r") as z:
                 z.extractall(BIN)
-            # find ffmpeg.exe in extracted tree
-            found = None
+            # find ffmpeg/ffprobe in extracted tree
+            ffmpeg_src = None
+            ffprobe_src = None
             for p in BIN.rglob("ffmpeg.exe"):
-                found = p
+                ffmpeg_src = p
                 break
-            if not found:
+            for p in BIN.rglob("ffprobe.exe"):
+                ffprobe_src = p
+                break
+            if not ffmpeg_src:
                 raise FileNotFoundError("ffmpeg.exe not found inside archive")
-            shutil.copy2(found, FFMPEG_EXE)
+            shutil.copy2(ffmpeg_src, FFMPEG_EXE)
+            if ffprobe_src:
+                shutil.copy2(ffprobe_src, BIN / "ffprobe.exe")
             write_version_stamp(remote_stamp)
             print("ffmpeg extracted.")
         finally:
@@ -232,7 +238,6 @@ def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode
         str(BIN),
         "--add-metadata",
         "--embed-metadata",
-        "--embed-thumbnail",
         "--progress",
         "--newline",
         "--ignore-errors",
@@ -241,7 +246,9 @@ def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode
     ]
     if output_format["video_only"]:
         cmd += ["-f", "bestvideo[ext=webm]+bestaudio[ext=webm]/best[ext=webm]"]
+        cmd += ["--no-embed-thumbnail"]
     else:
+        cmd += ["--embed-thumbnail"]
         cmd += [
             "-f",
             "bestaudio/best",
