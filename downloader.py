@@ -69,11 +69,18 @@ FFMPEG_VERSION_FILE = BIN / "ffmpeg.version"
 ICON_URL = "https://avatars.githubusercontent.com/u/79589310?v=4"
 
 OUTPUT_FORMATS = [
-    {"name": "MP3 320k", "format": "mp3", "bitrate": "320K", "video_only": False},
-    {"name": "M4A 256k", "format": "m4a", "bitrate": "256K", "video_only": False},
-    {"name": "AAC 256k", "format": "aac", "bitrate": "256K", "video_only": False},
-    {"name": "FLAC", "format": "flac", "bitrate": None, "video_only": False},
-    {"name": "WEBM Video", "format": "webm", "bitrate": None, "video_only": True},
+    {"name": "MP3 320k", "format": "mp3", "bitrate": "320K", "video_only": False, "output_ext": "mp3"},
+    {"name": "M4A 256k", "format": "m4a", "bitrate": "256K", "video_only": False, "output_ext": "m4a"},
+    {
+        "name": "AAC 256k",
+        "format": "aac",
+        "bitrate": "256K",
+        "video_only": False,
+        "output_ext": "m4a",
+        "audio_codec": "aac",
+    },
+    {"name": "FLAC", "format": "flac", "bitrate": None, "video_only": False, "output_ext": "flac"},
+    {"name": "WEBM Video", "format": "webm", "bitrate": None, "video_only": True, "output_ext": "webm"},
 ]
 PLAYLIST_MODES = {"single": "Single file", "playlist": "Playlist (all items)"}
 LOG_LOCK = threading.Lock()
@@ -240,12 +247,14 @@ def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode
             "bestaudio/best",
             "--extract-audio",
             "--audio-format",
-            output_format["format"],
+            output_format["output_ext"],
         ]
         if output_format.get("bitrate"):
             cmd += ["--audio-quality", output_format["bitrate"]]
         else:
             cmd += ["--audio-quality", AUDIO_QUALITY]
+        if output_format.get("audio_codec"):
+            cmd += ["--postprocessor-args", f"ffmpeg:-c:a {output_format['audio_codec']}"]
     cmd.append(url)
     if playlist_mode == "single":
         cmd.insert(-1, "--no-playlist")
