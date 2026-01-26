@@ -69,11 +69,18 @@ FFMPEG_VERSION_FILE = BIN / "ffmpeg.version"
 ICON_URL = "https://avatars.githubusercontent.com/u/79589310?v=4"
 
 OUTPUT_FORMATS = [
-    {"name": "MP3 320k", "format": "mp3", "bitrate": "320K", "video_only": False},
-    {"name": "M4A 256k", "format": "m4a", "bitrate": "256K", "video_only": False},
-    {"name": "AAC 256k", "format": "aac", "bitrate": "256K", "video_only": False},
-    {"name": "FLAC", "format": "flac", "bitrate": None, "video_only": False},
-    {"name": "WEBM Video", "format": "webm", "bitrate": None, "video_only": True},
+    {"name": "MP3 320k", "format": "mp3", "bitrate": "320K", "video_only": False, "output_ext": "mp3"},
+    {"name": "M4A 256k", "format": "m4a", "bitrate": "256K", "video_only": False, "output_ext": "m4a"},
+    {
+        "name": "AAC 256k",
+        "format": "aac",
+        "bitrate": "256K",
+        "video_only": False,
+        "output_ext": "m4a",
+        "audio_codec": "aac",
+    },
+    {"name": "FLAC", "format": "flac", "bitrate": None, "video_only": False, "output_ext": "flac"},
+    {"name": "WEBM Video", "format": "webm", "bitrate": None, "video_only": True, "output_ext": "webm"},
 ]
 PLAYLIST_MODES = {"single": "Single file", "playlist": "Playlist (all items)"}
 LOG_LOCK = threading.Lock()
@@ -168,14 +175,20 @@ def ensure_ffmpeg():
         try:
             with zipfile.ZipFile(zpath, "r") as z:
                 z.extractall(BIN)
-            # find ffmpeg.exe in extracted tree
-            found = None
+            # find ffmpeg/ffprobe in extracted tree
+            ffmpeg_src = None
+            ffprobe_src = None
             for p in BIN.rglob("ffmpeg.exe"):
-                found = p
+                ffmpeg_src = p
                 break
-            if not found:
+            for p in BIN.rglob("ffprobe.exe"):
+                ffprobe_src = p
+                break
+            if not ffmpeg_src:
                 raise FileNotFoundError("ffmpeg.exe not found inside archive")
-            shutil.copy2(found, FFMPEG_EXE)
+            shutil.copy2(ffmpeg_src, FFMPEG_EXE)
+            if ffprobe_src:
+                shutil.copy2(ffprobe_src, BIN / "ffprobe.exe")
             write_version_stamp(remote_stamp)
             print("ffmpeg extracted.")
         finally:
@@ -225,7 +238,6 @@ def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode
         str(BIN),
         "--add-metadata",
         "--embed-metadata",
-        "--embed-thumbnail",
         "--progress",
         "--newline",
         "--ignore-errors",
@@ -234,18 +246,22 @@ def build_command(url: str, output_dir: Path, output_format: dict, playlist_mode
     ]
     if output_format["video_only"]:
         cmd += ["-f", "bestvideo[ext=webm]+bestaudio[ext=webm]/best[ext=webm]"]
+        cmd += ["--no-embed-thumbnail"]
     else:
+        cmd += ["--embed-thumbnail"]
         cmd += [
             "-f",
             "bestaudio/best",
             "--extract-audio",
             "--audio-format",
-            output_format["format"],
+            output_format["output_ext"],
         ]
         if output_format.get("bitrate"):
             cmd += ["--audio-quality", output_format["bitrate"]]
         else:
             cmd += ["--audio-quality", AUDIO_QUALITY]
+        if output_format.get("audio_codec"):
+            cmd += ["--postprocessor-args", f"ffmpeg:-c:a {output_format['audio_codec']}"]
     cmd.append(url)
     if playlist_mode == "single":
         cmd.insert(-1, "--no-playlist")
@@ -372,10 +388,13 @@ def cli_main():
     print("Logs:", LOG_FILE)
     print("Errors:", ERR_LOG_FILE)
 
+PUBLISHER = "KENSAN LAB"
+
+
 class DownloaderGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("YouTube Audio Downloader")
+        self.root.title(f"YouTube Audio Downloader - {PUBLISHER}")
         self.event_queue = Queue()
         self.executor = None
         self.worker_thread = None
@@ -457,8 +476,14 @@ class DownloaderGUI:
         header = ttk.Label(self.root, text="YouTube Audio Downloader", font=("Segoe UI", 14, "bold"))
         header.pack(anchor="w", padx=16, pady=(12, 4))
 
-        urls_label = ttk.Label(self.root, text="Paste URLs (one per line):")
-        urls_label.pack(anchor="w", padx=16)
+        urls_header = ttk.Frame(self.root)
+        urls_header.pack(fill="x", padx=16)
+
+        urls_label = ttk.Label(urls_header, text="Paste URLs (one per line):")
+        urls_label.pack(side="left")
+
+        clear_button = ttk.Button(urls_header, text="Clear list", command=self.clear_urls)
+        clear_button.pack(side="right")
 
         self.urls_text = ScrolledText(
             self.root,
@@ -578,6 +603,10 @@ class DownloaderGUI:
         path = filedialog.askdirectory(initialdir=self.output_dir_var.get() or str(OUT))
         if path:
             self.output_dir_var.set(path)
+
+    def clear_urls(self):
+        if self.urls_text:
+            self.urls_text.delete("1.0", tk.END)
 
     def set_controls_state(self, enabled: bool):
         state = tk.NORMAL if enabled else tk.DISABLED
