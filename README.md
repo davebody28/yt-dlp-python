@@ -11,7 +11,7 @@ How to run (Windows):
 6. Files appear in the selected output directory (default: `Downloads/YYYY-MM-DD`).
 
 CLI mode (optional):
-1. Put your URLs (one per line) into `urls.txt`
+1. Create `urls.txt` (not included in the repo) and put your URLs (one per line) inside
 2. Run `python downloader.py --cli` (optional: `--single` or `--playlist`)
 3. Watch console output (progress). Logs are written to `logs/yt-dlp.log` and `logs/yt-dlp-errors.log`
 4. Files appear in the default output directory (Downloads or `downloads/` with a `YYYY-MM-DD` subfolder)
